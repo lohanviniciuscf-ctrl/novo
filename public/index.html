@@ -22,7 +22,6 @@ body{
   radial-gradient(circle at top, #0f172a, #020617),
   linear-gradient(135deg,#020617,#000);
  color:var(--text);
- overflow-x:hidden;
 }
 .hidden{display:none}
 
@@ -148,7 +147,7 @@ canvas{
   <h2 id="envTitle"></h2>
   <input id="user" placeholder="Usuário">
   <input id="pass" type="password" placeholder="Senha">
-  <button onclick="login()">Entrar</button>
+  <button onclick="loginUser()">Entrar</button>
   <div id="error" style="margin-top:10px;color:#f87171"></div>
  </div>
 </div>
@@ -176,30 +175,59 @@ canvas{
 </div>
 
 <script>
+/* ===== ELEMENTOS ===== */
+const envScreen   = document.getElementById("env");
+const loginScreen = document.getElementById("login");
+const dashScreen  = document.getElementById("dash");
+
+const envTitle = document.getElementById("envTitle");
+const dashTitle = document.getElementById("dashTitle");
+const error = document.getElementById("error");
+
+const mPedidos = document.getElementById("mPedidos");
+const mTotal = document.getElementById("mTotal");
+const mLucro = document.getElementById("mLucro");
+const mComissao = document.getElementById("mComissao");
+
+const file = document.getElementById("file");
+const chartCanvas = document.getElementById("chart");
+
+/* ===== DADOS ===== */
 const users={
  Lohan:{pass:"123",env:["Modelle","Cia","Thalles"]},
  Admin:{pass:"admin",env:["Modelle"]}
 };
 
-let envAtual=null, dados=[], chart=null;
+let envAtual=null;
+let dados=[];
+let chart=null;
 
-function selectEnv(e){
- envAtual=e;
- env.classList.add("hidden");
- login.classList.remove("hidden");
- envTitle.innerText=e;
+/* ===== FLUXO ===== */
+function selectEnv(env){
+ envAtual=env;
+ envScreen.classList.add("hidden");
+ loginScreen.classList.remove("hidden");
+ envTitle.innerText=env;
 }
 
-function login(){
- if(users[user.value] && users[user.value].pass===pass.value && users[user.value].env.includes(envAtual)){
-  login.classList.add("hidden");
-  dash.classList.remove("hidden");
+function loginUser(){
+ const u=user.value;
+ const p=pass.value;
+
+ if(users[u] && users[u].pass===p && users[u].env.includes(envAtual)){
+  loginScreen.classList.add("hidden");
+  dashScreen.classList.remove("hidden");
   dashTitle.innerText=envAtual+" — Dashboard";
- } else error.innerText="Login inválido";
+ } else {
+  error.innerText="Login inválido";
+ }
 }
 
-function logout(){location.reload();}
+function logout(){
+ location.reload();
+}
 
+/* ===== CSV ===== */
 file.addEventListener("change",e=>{
  const reader=new FileReader();
  reader.onload=()=>processCSV(reader.result);
@@ -208,11 +236,11 @@ file.addEventListener("change",e=>{
 
 function processCSV(text){
  const rows=text.trim().split("\n").map(r=>r.split(","));
- const head=rows.shift();
+ const headers=rows.shift();
  dados=rows.map(r=>{
-  const obj={};
-  head.forEach((h,i)=>obj[h.trim()]=r[i]);
-  return obj;
+  const o={};
+  headers.forEach((h,i)=>o[h.trim()]=r[i]);
+  return o;
  });
  render();
 }
@@ -243,7 +271,7 @@ function render(){
     data:Object.values(porDia),
     backgroundColor:"#64ffda",
     borderRadius:6,
-    barThickness:18
+    barThickness:14
    }]
   },
   options:{
