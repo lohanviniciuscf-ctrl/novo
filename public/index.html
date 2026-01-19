@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Futurista</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root{
+ --bg:#05070f;
+ --glass:rgba(255,255,255,.08);
+ --accent:#64ffda;
+ --text:#e5e7eb;
+ --glow:0 0 25px rgba(100,255,218,.35);
+}
+*{box-sizing:border-box;font-family:Poppins}
+body{
+ margin:0;
+ background:
+  radial-gradient(circle at top, #0f172a, #020617),
+  linear-gradient(135deg,#020617,#000);
+ color:var(--text);
+ overflow-x:hidden;
+}
+.hidden{display:none}
+
+.center{
+ min-height:100vh;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+}
+
+.card{
+ background:var(--glass);
+ backdrop-filter:blur(20px);
+ border-radius:22px;
+ padding:35px;
+ width:380px;
+ box-shadow:0 0 40px rgba(0,0,0,.6);
+ animation:fade .8s ease;
+}
+
+@keyframes fade{
+ from{opacity:0;transform:translateY(20px)}
+ to{opacity:1}
+}
+
+h2{text-align:center;margin-bottom:20px}
+
+button{
+ width:100%;
+ padding:14px;
+ margin-top:12px;
+ border:none;
+ border-radius:14px;
+ background:linear-gradient(135deg,var(--accent),#38bdf8);
+ color:#000;
+ font-weight:600;
+ cursor:pointer;
+ transition:.3s;
+ box-shadow:var(--glow);
+}
+button:hover{
+ transform:translateY(-3px) scale(1.02);
+ box-shadow:0 0 40px rgba(100,255,218,.6);
+}
+
+.env-btn{
+ background:linear-gradient(135deg,#111827,#020617);
+ color:#fff;
+ border:1px solid rgba(255,255,255,.15);
+}
+
+input{
+ width:100%;
+ padding:12px;
+ border-radius:12px;
+ border:none;
+ background:rgba(255,255,255,.1);
+ color:#fff;
+ margin-bottom:12px;
+}
+
+header{
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ margin-bottom:20px;
+}
+
+.grid{
+ display:grid;
+ grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+ gap:20px;
+}
+
+.metric{
+ background:var(--glass);
+ border-radius:18px;
+ padding:22px;
+ text-align:center;
+ box-shadow:0 0 25px rgba(0,0,0,.5);
+}
+
+.metric strong{
+ font-size:26px;
+ color:var(--accent);
+}
+
+.upload{
+ border:2px dashed rgba(255,255,255,.25);
+ padding:25px;
+ border-radius:18px;
+ text-align:center;
+ cursor:pointer;
+ transition:.3s;
+}
+.upload:hover{
+ background:rgba(255,255,255,.05);
+}
+
+canvas{
+ margin-top:30px;
+ background:rgba(0,0,0,.3);
+ border-radius:18px;
+ padding:15px;
+}
+</style>
+</head>
+<body>
+
+<!-- SELEÇÃO DE AMBIENTE -->
+<div id="env" class="center">
+ <div class="card">
+  <h2>🌐 Escolha o Ambiente</h2>
+  <button class="env-btn" onclick="selectEnv('Modelle')">👩‍🦰 Modelle Skin</button>
+  <button class="env-btn" onclick="selectEnv('Cia')">📒 Cia & Arte</button>
+  <button class="env-btn" onclick="selectEnv('Thalles')">🌬️ Thalles Climatização</button>
+ </div>
+</div>
+
+<!-- LOGIN -->
+<div id="login" class="center hidden">
+ <div class="card">
+  <h2 id="envTitle"></h2>
+  <input id="user" placeholder="Usuário">
+  <input id="pass" type="password" placeholder="Senha">
+  <button onclick="login()">Entrar</button>
+  <div id="error" style="margin-top:10px;color:#f87171"></div>
+ </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dash" class="hidden" style="padding:30px">
+<header>
+ <h2 id="dashTitle"></h2>
+ <button style="width:auto;padding:10px 20px" onclick="logout()">Sair</button>
+</header>
+
+<div class="grid">
+ <div class="metric">Pedidos<br><strong id="mPedidos">0</strong></div>
+ <div class="metric">Faturamento<br><strong id="mTotal">R$ 0</strong></div>
+ <div class="metric">Lucro<br><strong id="mLucro">R$ 0</strong></div>
+ <div class="metric">Comissão<br><strong id="mComissao">R$ 0</strong></div>
+</div>
+
+<div class="upload" onclick="file.click()">
+ 📂 Clique ou arraste um CSV aqui
+ <input type="file" id="file" accept=".csv" hidden>
+</div>
+
+<canvas id="chart" height="120"></canvas>
+</div>
+
+<script>
+const users={
+ Lohan:{pass:"123",env:["Modelle","Cia","Thalles"]},
+ Admin:{pass:"admin",env:["Modelle"]}
+};
+
+let envAtual=null, dados=[], chart=null;
+
+function selectEnv(e){
+ envAtual=e;
+ env.classList.add("hidden");
+ login.classList.remove("hidden");
+ envTitle.innerText=e;
+}
+
+function login(){
+ if(users[user.value] && users[user.value].pass===pass.value && users[user.value].env.includes(envAtual)){
+  login.classList.add("hidden");
+  dash.classList.remove("hidden");
+  dashTitle.innerText=envAtual+" — Dashboard";
+ } else error.innerText="Login inválido";
+}
+
+function logout(){location.reload();}
+
+file.addEventListener("change",e=>{
+ const reader=new FileReader();
+ reader.onload=()=>processCSV(reader.result);
+ reader.readAsText(e.target.files[0]);
+});
+
+function processCSV(text){
+ const rows=text.trim().split("\n").map(r=>r.split(","));
+ const head=rows.shift();
+ dados=rows.map(r=>{
+  const obj={};
+  head.forEach((h,i)=>obj[h.trim()]=r[i]);
+  return obj;
+ });
+ render();
+}
+
+function render(){
+ let total=0,lucro=0;
+ const porDia={};
+
+ dados.forEach(d=>{
+  const v=+d.valor||0;
+  total+=v;
+  if(d.custo) lucro+=v-(+d.custo+(+d.ordinario||0));
+  const dia=d.data;
+  porDia[dia]=(porDia[dia]||0)+v;
+ });
+
+ mPedidos.innerText=dados.length;
+ mTotal.innerText="R$ "+total.toFixed(2);
+ mLucro.innerText="R$ "+lucro.toFixed(2);
+ mComissao.innerText=envAtual==="Modelle"?"R$ "+(total*0.01).toFixed(2):"—";
+
+ if(chart) chart.destroy();
+ chart=new Chart(chartCanvas,{
+  type:"bar",
+  data:{
+   labels:Object.keys(porDia),
+   datasets:[{
+    data:Object.values(porDia),
+    backgroundColor:"#64ffda",
+    borderRadius:6,
+    barThickness:18
+   }]
+  },
+  options:{
+   plugins:{legend:{display:false}},
+   scales:{y:{beginAtZero:true}}
+  }
+ });
+}
+</script>
+</body>
+</html>
